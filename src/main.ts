@@ -1,13 +1,15 @@
-import { Chess, type Color, type Square } from 'chess.js'
+import { Chess, type Square } from 'chess.js'
 import { registerSW } from 'virtual:pwa-register'
-import type { Puzzle } from './puzzle'
+import { playUci, type Difficulty, type Puzzle } from './puzzle'
 import './style.css'
 
 const pieces: Record<string, string> = {
-  wk: '♔', wq: '♕', wr: '♖',
-  bk: '♚', bq: '♛', br: '♜',
+  wk: '♔', wq: '♕', wr: '♖', wb: '♗', wn: '♘', wp: '♙',
+  bk: '♚', bq: '♛', br: '♜', bb: '♝', bn: '♞', bp: '♟',
 }
-const names: Record<string, string> = { k: 'king', q: 'queen', r: 'rook' }
+const names: Record<string, string> = {
+  k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn',
+}
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="shell">
@@ -17,9 +19,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </header>
     <section class="game" aria-labelledby="title">
       <div class="intro">
-        <p class="eyebrow">A fresh challenge, every time</p>
-        <h1 id="title">Find the winning move.</h1>
-        <p class="intro-copy">Tap a piece, then tap its destination. Every position is created on your device.</p>
+        <p class="eyebrow">Real game tactics</p>
+        <h1 id="title">Find the winning line.</h1>
+        <p class="intro-copy">Choose a difficulty, then tap a piece and its destination. Your opponent will reply between moves.</p>
       </div>
       <div class="play-area">
         <section class="board-card" aria-label="Chess puzzle">
@@ -28,10 +30,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <p id="status" class="status" role="status" aria-live="polite">Generating a puzzle…</p>
         </section>
         <aside class="details">
+          <label class="difficulty-label" for="difficulty">Difficulty</label>
+          <select id="difficulty" class="difficulty-select">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
           <div class="goal-card">
             <span class="card-label">YOUR GOAL</span>
-            <h2 id="goal">Checkmate in one move</h2>
-            <p>Find any move that checkmates your opponent immediately.</p>
+            <h2 id="goal">Preparing puzzle…</h2>
+            <p id="goal-detail">Find the best sequence from a real game.</p>
           </div>
           <button id="new-puzzle" class="new-button" type="button" disabled>New puzzle <span aria-hidden="true">↗</span></button>
           <p class="small-note">No connection needed once the app is installed.</p>
@@ -44,6 +52,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const board = document.querySelector<HTMLDivElement>('#board')!
 const status = document.querySelector<HTMLParagraphElement>('#status')!
 const sideLabel = document.querySelector<HTMLSpanElement>('#side')!
+const goalLabel = document.querySelector<HTMLHeadingElement>('#goal')!
+const goalDetail = document.querySelector<HTMLParagraphElement>('#goal-detail')!
+const difficultySelect = document.querySelector<HTMLSelectElement>('#difficulty')!
 const newButton = document.querySelector<HTMLButtonElement>('#new-puzzle')!
 const puzzleTag = document.querySelector<HTMLSpanElement>('.puzzle-tag')!
 const worker = new Worker(new URL('./puzzle.worker.ts', import.meta.url), { type: 'module' })
@@ -53,6 +64,7 @@ let puzzle: Puzzle | null = null
 let selected: Square | null = null
 let solved = false
 let puzzleNumber = 0
+let solutionIndex = 0
 
 function renderBoard(): void {
   board.replaceChildren()
@@ -95,30 +107,41 @@ function renderBoard(): void {
 
 function nextPuzzle(): void {
   newButton.disabled = true
+  difficultySelect.disabled = true
   game = null
   puzzle = null
   selected = null
   solved = false
-  status.textContent = 'Generating a puzzle…'
+  solutionIndex = 0
+  status.textContent = 'Preparing a puzzle…'
   sideLabel.textContent = 'Preparing puzzle…'
+  goalLabel.textContent = 'Preparing puzzle…'
   renderBoard()
-  worker.postMessage(null)
+  worker.postMessage(difficultySelect.value as Difficulty)
 }
 
 worker.onmessage = (event: MessageEvent<{ puzzle?: Puzzle; error?: string }>) => {
   if (event.data.error || !event.data.puzzle) {
     status.textContent = event.data.error ?? 'Puzzle generation failed.'
     newButton.disabled = false
+    difficultySelect.disabled = false
     return
   }
   puzzle = event.data.puzzle
   game = new Chess(puzzle.fen)
   board.dataset.fen = puzzle.fen
+  board.dataset.puzzleId = puzzle.id
+  board.dataset.difficulty = puzzle.difficulty
+  board.dataset.solution = puzzle.solution.join(' ')
   puzzleNumber++
   puzzleTag.textContent = `Puzzle ${String(puzzleNumber).padStart(2, '0')}`
   sideLabel.textContent = `${puzzle.side === 'w' ? 'White' : 'Black'} to move`
+  goalLabel.textContent = puzzle.goal
+  const moves = Math.ceil(puzzle.solution.length / 2)
+  goalDetail.textContent = `${moves} move${moves === 1 ? '' : 's'} to solve · Puzzle rating ${puzzle.rating}`
   status.textContent = 'Choose a piece to begin.'
   newButton.disabled = false
+  difficultySelect.disabled = false
   renderBoard()
 }
 
@@ -137,8 +160,10 @@ board.addEventListener('click', (event) => {
   }
   if (!selected) return
 
+  const from = selected
+  const expected = puzzle.solution[solutionIndex]
   try {
-    game.move({ from: selected, to: square })
+    game.move({ from, to: square, promotion: 'q' })
   } catch {
     status.textContent = 'That move is not legal. Try another square.'
     return
@@ -147,17 +172,31 @@ board.addEventListener('click', (event) => {
   if (game.isCheckmate()) {
     solved = true
     status.textContent = 'Checkmate! Well done.'
-  } else {
+  } else if (`${from}${square}${expected.length === 5 ? 'q' : ''}` !== expected) {
     game.undo()
-    status.textContent = 'That move does not checkmate. Try again.'
+    status.textContent = 'That is not the winning continuation. Try again.'
+  } else {
+    solutionIndex++
+    if (solutionIndex < puzzle.solution.length) {
+      playUci(game, puzzle.solution[solutionIndex])
+      solutionIndex++
+    }
+    if (solutionIndex >= puzzle.solution.length) {
+      solved = true
+      status.textContent = 'Puzzle solved! Well done.'
+    } else {
+      status.textContent = `Correct. Find move ${Math.floor(solutionIndex / 2) + 1} of ${Math.ceil(puzzle.solution.length / 2)}.`
+    }
   }
   renderBoard()
 })
 
 newButton.addEventListener('click', nextPuzzle)
+difficultySelect.addEventListener('change', nextPuzzle)
 worker.onerror = () => {
   status.textContent = 'Puzzle generation failed. Please try again.'
   newButton.disabled = false
+  difficultySelect.disabled = false
 }
 
 registerSW({ immediate: true })

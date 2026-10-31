@@ -193,6 +193,28 @@ button{
   flex-direction:column;
   gap:16px
 }
+.difficulty-label{
+  margin:2px 2px -10px;
+  color:#486553;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase
+}
+.difficulty-select{
+  width:100%;
+  padding:13px 16px;
+  border:1px solid #cbd7cb;
+  border-radius:12px;
+  background:#fffdf8;
+  color:#172420;
+  font:inherit;
+  font-weight:700
+}
+.difficulty-select:focus-visible{
+  outline:3px solid #1e6249;
+  outline-offset:2px
+}
 .goal-card{
   padding:27px;
   border-radius:18px;
