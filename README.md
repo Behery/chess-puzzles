@@ -18,6 +18,10 @@ npm run preview
 
 Install the app from your browser while online. Once installed, the app and its 22,930 bundled puzzles are cached for offline use.
 
+## Playing
+
+Select a piece to see its legal destinations. The first press of **Hint** marks the piece for the next move; the second marks its destination. **Solve** animates the complete solution from the starting position. **Back** and **Forward** replay accepted moves and opponent replies; return to the latest position to continue solving. The board marks the most recent move. Reduced-motion settings skip the movement animation.
+
 ## Difficulty
 
 | Level | Selection rule |

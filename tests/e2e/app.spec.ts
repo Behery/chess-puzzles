@@ -34,6 +34,9 @@ async function solve(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promis
       const reply = solution[index + 1]
       game.move({ from: reply.slice(0, 2) as Square, to: reply.slice(2, 4) as Square, promotion: reply[4] ?? 'q' })
     }
+    if (index + 2 < solution.length) {
+      await expect(page.getByRole('status')).toHaveText(`Correct. Find move ${index / 2 + 2} of ${Math.ceil(solution.length / 2)}.`)
+    }
   }
   await expect(page.getByRole('status')).toContainText(/Checkmate|Puzzle solved/)
 }
@@ -57,6 +60,63 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await expect(page.locator('.puzzle-tag')).toHaveText('Puzzle 04')
 })
 
+test('shows legal moves, staged hints, replay, and the animated solution', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Difficulty').selectOption('medium')
+  const board = page.locator('#board')
+  await expect(board).toHaveAttribute('data-difficulty', 'medium')
+  const solution = (await board.getAttribute('data-solution'))!.split(' ')
+  const first = solution[0]
+  const reply = solution[1]
+  const next = solution[2]
+  const source = page.locator(`[data-square="${first.slice(0, 2)}"]`)
+  const destination = page.locator(`[data-square="${first.slice(2, 4)}"]`)
+
+  await source.click()
+  await expect(destination).toHaveClass(/legal-target/)
+  await page.getByRole('button', { name: 'Hint' }).click()
+  await expect(source).toHaveClass(/hint-from/)
+  await expect(destination).not.toHaveClass(/hint-to/)
+  await expect(page.getByRole('status')).toHaveText(`Hint: select the piece on ${first.slice(0, 2)}.`)
+  await page.getByRole('button', { name: 'Hint' }).click()
+  await expect(destination).toHaveClass(/hint-to/)
+  await expect(page.getByRole('status')).toHaveText(`Hint: move it to ${first.slice(2, 4)}.`)
+
+  await page.evaluate(() => {
+    const boardElement = document.querySelector('#board')!
+    const windowWithFlag = window as Window & { sawMoveAnimation?: boolean }
+    windowWithFlag.sawMoveAnimation = false
+    new MutationObserver(() => {
+      if (boardElement.getAttribute('data-animating') === 'true') windowWithFlag.sawMoveAnimation = true
+    }).observe(boardElement, { attributes: true, attributeFilter: ['data-animating'] })
+  })
+  await source.click()
+  await destination.click()
+  await expect(page.getByRole('status')).toHaveText(`Correct. Find move 2 of ${Math.ceil(solution.length / 2)}.`)
+  expect(await page.evaluate(() => (window as Window & { sawMoveAnimation?: boolean }).sawMoveAnimation)).toBe(true)
+  await expect(page.locator(`[data-square="${reply.slice(0, 2)}"]`)).toHaveClass(/last-move/)
+  await expect(page.locator(`[data-square="${reply.slice(2, 4)}"]`)).toHaveClass(/last-move/)
+
+  await page.getByRole('button', { name: 'Back one move' }).click()
+  await expect(page.getByRole('status')).toContainText('Reviewing move')
+  await expect(page.getByRole('button', { name: 'Hint' })).toBeDisabled()
+  await expect(source).toHaveClass(/last-move/)
+  await expect(destination).toHaveClass(/last-move/)
+  await page.getByRole('button', { name: 'Forward one move' }).click()
+  await expect(page.getByRole('status')).toHaveText('Continue solving.')
+  await page.getByRole('button', { name: 'Hint' }).click()
+  await expect(page.locator(`[data-square="${next.slice(0, 2)}"]`)).toHaveClass(/hint-from/)
+
+  await page.getByRole('button', { name: 'Solve' }).click()
+  await expect(page.getByRole('status')).toHaveText('Solution shown. Use Back and Forward to replay.')
+  const last = solution.at(-1)!
+  await expect(page.locator(`[data-square="${last.slice(0, 2)}"]`)).toHaveClass(/last-move/)
+  await expect(page.locator(`[data-square="${last.slice(2, 4)}"]`)).toHaveClass(/last-move/)
+  await page.getByRole('button', { name: 'Back one move' }).click()
+  await page.getByRole('button', { name: 'Forward one move' }).click()
+  await expect(page.getByRole('status')).toHaveText('Review complete.')
+})
+
 test.describe('phone layout', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
@@ -66,5 +126,8 @@ test.describe('phone layout', () => {
     await expect(page.locator('#side')).toContainText('to move')
     await expect(page.locator('#goal')).not.toHaveText('Preparing puzzle…')
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    const first = (await page.locator('#board').getAttribute('data-solution'))!.split(' ')[0]
+    await page.locator(`[data-square="${first.slice(0, 2)}"]`).tap()
+    await expect(page.locator(`[data-square="${first.slice(2, 4)}"]`)).toHaveClass(/legal-target/)
   })
 })

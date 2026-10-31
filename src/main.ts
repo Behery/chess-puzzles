@@ -41,6 +41,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <h2 id="goal">Preparing puzzle…</h2>
             <p id="goal-detail">Find the best sequence from a real game.</p>
           </div>
+          <div class="action-row">
+            <button id="back" class="action-button" type="button" aria-label="Back one move" disabled>← Back</button>
+            <button id="forward" class="action-button" type="button" aria-label="Forward one move" disabled>Forward →</button>
+          </div>
+          <div class="action-row">
+            <button id="hint" class="action-button" type="button" disabled>Hint</button>
+            <button id="solve" class="action-button" type="button" disabled>Solve</button>
+          </div>
           <button id="new-puzzle" class="new-button" type="button" disabled>New puzzle <span aria-hidden="true">↗</span></button>
           <p class="small-note">No connection needed once the app is installed.</p>
         </aside>
@@ -56,6 +64,10 @@ const goalLabel = document.querySelector<HTMLHeadingElement>('#goal')!
 const goalDetail = document.querySelector<HTMLParagraphElement>('#goal-detail')!
 const difficultySelect = document.querySelector<HTMLSelectElement>('#difficulty')!
 const newButton = document.querySelector<HTMLButtonElement>('#new-puzzle')!
+const backButton = document.querySelector<HTMLButtonElement>('#back')!
+const forwardButton = document.querySelector<HTMLButtonElement>('#forward')!
+const hintButton = document.querySelector<HTMLButtonElement>('#hint')!
+const solveButton = document.querySelector<HTMLButtonElement>('#solve')!
 const puzzleTag = document.querySelector<HTMLSpanElement>('.puzzle-tag')!
 const worker = new Worker(new URL('./puzzle.worker.ts', import.meta.url), { type: 'module' })
 
@@ -65,10 +77,32 @@ let selected: Square | null = null
 let solved = false
 let puzzleNumber = 0
 let solutionIndex = 0
+let playedMoves: string[] = []
+let viewIndex = 0
+let hintStage = 0
+let busy = false
+
+function updateControls(): void {
+  const replaying = viewIndex < playedMoves.length
+  newButton.disabled = busy
+  difficultySelect.disabled = busy
+  backButton.disabled = busy || viewIndex === 0
+  forwardButton.disabled = busy || !replaying
+  hintButton.disabled = busy || !puzzle || solved || replaying
+  solveButton.disabled = busy || !puzzle
+}
 
 function renderBoard(): void {
   board.replaceChildren()
-  if (!game || !puzzle) return
+  if (!game || !puzzle) {
+    updateControls()
+    return
+  }
+  const legalMoves = selected
+    ? new Set(game.moves({ square: selected, verbose: true }).map((move) => move.to))
+    : new Set<Square>()
+  const lastMove = playedMoves[viewIndex - 1]
+  const hintedMove = puzzle.solution[solutionIndex]
   const files = puzzle.side === 'w' ? 'abcdefgh' : 'hgfedcba'
   const ranks = puzzle.side === 'w' ? '87654321' : '12345678'
   for (const rank of ranks) {
@@ -79,9 +113,15 @@ function renderBoard(): void {
       button.type = 'button'
       button.className = `square ${(Number(rank) + file.charCodeAt(0)) % 2 ? 'light' : 'dark'}`
       button.dataset.square = square
-      button.setAttribute('aria-label', `${square}${piece ? ` ${piece.color === 'w' ? 'white' : 'black'} ${names[piece.type]}` : ' empty'}`)
+      const legal = legalMoves.has(square)
+      button.setAttribute('aria-label', `${square}${piece ? ` ${piece.color === 'w' ? 'white' : 'black'} ${names[piece.type]}` : ' empty'}${legal ? ', legal move' : ''}`)
       button.setAttribute('aria-pressed', String(selected === square))
       if (selected === square) button.classList.add('selected')
+      if (legal) button.classList.add('legal-target')
+      if (legal && piece) button.classList.add('capture-target')
+      if (lastMove && (square === lastMove.slice(0, 2) || square === lastMove.slice(2, 4))) button.classList.add('last-move')
+      if (hintStage > 0 && square === hintedMove.slice(0, 2)) button.classList.add('hint-from')
+      if (hintStage > 1 && square === hintedMove.slice(2, 4)) button.classList.add('hint-to')
       if (piece) {
         const symbol = document.createElement('span')
         symbol.className = `piece ${piece.color === 'w' ? 'white-piece' : 'black-piece'}`
@@ -103,16 +143,20 @@ function renderBoard(): void {
       board.append(button)
     }
   }
+  updateControls()
 }
 
 function nextPuzzle(): void {
-  newButton.disabled = true
-  difficultySelect.disabled = true
+  if (busy) return
+  busy = true
   game = null
   puzzle = null
   selected = null
   solved = false
   solutionIndex = 0
+  playedMoves = []
+  viewIndex = 0
+  hintStage = 0
   status.textContent = 'Preparing a puzzle…'
   sideLabel.textContent = 'Preparing puzzle…'
   goalLabel.textContent = 'Preparing puzzle…'
@@ -121,10 +165,10 @@ function nextPuzzle(): void {
 }
 
 worker.onmessage = (event: MessageEvent<{ puzzle?: Puzzle; error?: string }>) => {
+  busy = false
   if (event.data.error || !event.data.puzzle) {
     status.textContent = event.data.error ?? 'Puzzle generation failed.'
-    newButton.disabled = false
-    difficultySelect.disabled = false
+    updateControls()
     return
   }
   puzzle = event.data.puzzle
@@ -140,13 +184,107 @@ worker.onmessage = (event: MessageEvent<{ puzzle?: Puzzle; error?: string }>) =>
   const moves = Math.ceil(puzzle.solution.length / 2)
   goalDetail.textContent = `${moves} move${moves === 1 ? '' : 's'} to solve · Puzzle rating ${puzzle.rating}`
   status.textContent = 'Choose a piece to begin.'
-  newButton.disabled = false
-  difficultySelect.disabled = false
   renderBoard()
 }
 
-board.addEventListener('click', (event) => {
-  if (!game || !puzzle || solved) return
+async function animateBoardMove(from: Square, to: Square, apply: () => void): Promise<void> {
+  const start = board.querySelector<HTMLButtonElement>(`[data-square="${from}"]`)?.getBoundingClientRect()
+  apply()
+  renderBoard()
+  const target = board.querySelector<HTMLButtonElement>(`[data-square="${to}"]`)
+  const piece = target?.querySelector<HTMLElement>('.piece')
+  if (!start || !target || !piece || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+  const end = target.getBoundingClientRect()
+  board.dataset.animating = 'true'
+  target.style.zIndex = '3'
+  try {
+    await piece.animate(
+      [
+        { transform: `translate(${start.left - end.left}px, ${start.top - end.top}px)` },
+        { transform: 'translate(0, 0)' },
+      ],
+      { duration: 280, easing: 'ease-in-out' },
+    ).finished
+  } finally {
+    board.dataset.animating = 'false'
+    target.style.removeProperty('z-index')
+  }
+}
+
+async function recordMove(uci: string): Promise<void> {
+  const from = uci.slice(0, 2) as Square
+  const to = uci.slice(2, 4) as Square
+  await animateBoardMove(from, to, () => {
+    playUci(game!, uci)
+    playedMoves.push(uci)
+    viewIndex++
+  })
+}
+
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function replay(direction: -1 | 1): Promise<void> {
+  if (!game || busy || (direction === -1 && viewIndex === 0) || (direction === 1 && viewIndex === playedMoves.length)) return
+  busy = true
+  selected = null
+  hintStage = 0
+  updateControls()
+  const uci = playedMoves[direction === -1 ? viewIndex - 1 : viewIndex]
+  const from = (direction === -1 ? uci.slice(2, 4) : uci.slice(0, 2)) as Square
+  const to = (direction === -1 ? uci.slice(0, 2) : uci.slice(2, 4)) as Square
+  try {
+    await animateBoardMove(from, to, () => {
+      if (direction === -1) {
+        game!.undo()
+      } else {
+        playUci(game!, uci)
+      }
+      viewIndex += direction
+    })
+    status.textContent = viewIndex < playedMoves.length
+      ? `Reviewing move ${viewIndex} of ${playedMoves.length}. Use Forward to resume.`
+      : solved ? 'Review complete.' : 'Continue solving.'
+  } finally {
+    busy = false
+    updateControls()
+  }
+}
+
+async function showSolution(): Promise<void> {
+  if (!puzzle || busy) return
+  busy = true
+  game = new Chess(puzzle.fen)
+  playedMoves = []
+  viewIndex = 0
+  solutionIndex = 0
+  selected = null
+  hintStage = 0
+  solved = false
+  status.textContent = 'Showing the solution…'
+  renderBoard()
+  try {
+    for (const uci of puzzle.solution) {
+      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
+      await recordMove(uci)
+    }
+    solutionIndex = puzzle.solution.length
+    solved = true
+    status.textContent = 'Solution shown. Use Back and Forward to replay.'
+  } finally {
+    busy = false
+    updateControls()
+  }
+}
+
+board.addEventListener('click', async (event) => {
+  if (!game || !puzzle || solved || busy) return
+  if (viewIndex < playedMoves.length) {
+    status.textContent = 'Use Forward to return to the current position.'
+    return
+  }
   const target = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-square]')
   if (!target) return
   const square = target.dataset.square as Square
@@ -162,41 +300,68 @@ board.addEventListener('click', (event) => {
 
   const from = selected
   const expected = puzzle.solution[solutionIndex]
+  let move
   try {
-    game.move({ from, to: square, promotion: 'q' })
+    move = game.move({ from, to: square, promotion: 'q' })
   } catch {
     status.textContent = 'That move is not legal. Try another square.'
     return
   }
+  const mate = game.isCheckmate()
+  game.undo()
   selected = null
-  if (game.isCheckmate()) {
-    solved = true
-    status.textContent = 'Checkmate! Well done.'
-  } else if (`${from}${square}${expected.length === 5 ? 'q' : ''}` !== expected) {
-    game.undo()
+  const uci = `${move.from}${move.to}${move.promotion ?? ''}`
+  if (!mate && uci !== expected) {
     status.textContent = 'That is not the winning continuation. Try again.'
-  } else {
+    renderBoard()
+    return
+  }
+
+  hintStage = 0
+  busy = true
+  updateControls()
+  try {
+    await recordMove(uci)
     solutionIndex++
-    if (solutionIndex < puzzle.solution.length) {
-      playUci(game, puzzle.solution[solutionIndex])
+    if (mate) {
+      solved = true
+      status.textContent = 'Checkmate! Well done.'
+    } else if (solutionIndex < puzzle.solution.length) {
+      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
+      await recordMove(puzzle.solution[solutionIndex])
       solutionIndex++
     }
-    if (solutionIndex >= puzzle.solution.length) {
+    if (!solved && solutionIndex >= puzzle.solution.length) {
       solved = true
       status.textContent = 'Puzzle solved! Well done.'
-    } else {
+    } else if (!solved) {
       status.textContent = `Correct. Find move ${Math.floor(solutionIndex / 2) + 1} of ${Math.ceil(puzzle.solution.length / 2)}.`
     }
+  } finally {
+    busy = false
+    renderBoard()
   }
-  renderBoard()
 })
 
 newButton.addEventListener('click', nextPuzzle)
 difficultySelect.addEventListener('change', nextPuzzle)
+backButton.addEventListener('click', () => void replay(-1))
+forwardButton.addEventListener('click', () => void replay(1))
+hintButton.addEventListener('click', () => {
+  if (!puzzle || busy || solved || viewIndex < playedMoves.length) return
+  selected = null
+  hintStage = Math.min(hintStage + 1, 2)
+  const move = puzzle.solution[solutionIndex]
+  status.textContent = hintStage === 1
+    ? `Hint: select the piece on ${move.slice(0, 2)}.`
+    : `Hint: move it to ${move.slice(2, 4)}.`
+  renderBoard()
+})
+solveButton.addEventListener('click', () => void showSolution())
 worker.onerror = () => {
+  busy = false
   status.textContent = 'Puzzle generation failed. Please try again.'
-  newButton.disabled = false
-  difficultySelect.disabled = false
+  updateControls()
 }
 
 registerSW({ immediate: true })
