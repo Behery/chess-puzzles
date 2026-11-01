@@ -9,14 +9,18 @@ npm install
 npm run dev
 ```
 
-Open the URL printed by Vite. To verify a production build:
+On the PC, open Vite's **Local** URL. On a phone connected to the same Wi-Fi, open the **Network** URL that Vite prints (currently `http://192.168.0.100:5173` on this PC). Keep the terminal running. `localhost` on the phone refers to the phone itself, not this PC. If the Network URL does not open, allow Node/Vite through the PC's firewall on the private network and check that the phone is not on a guest network or VPN.
+
+The LAN development URL lets you try the game on your phone, but it cannot install or cache the PWA for offline use because phone browsers require HTTPS for that. Host a production build at an HTTPS URL, open it on the phone while online, and install it from the browser before a flight.
+
+To verify a production build locally on the PC:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-Install the app from your browser while online. Once installed, the app and its 22,930 bundled puzzles are cached for offline use.
+Once installed from an HTTPS URL, the app and its 22,930 bundled puzzles are cached for offline use.
 
 ## Playing
 

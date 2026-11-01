@@ -5,7 +5,7 @@
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "icons": "node scripts/generate-icons.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
