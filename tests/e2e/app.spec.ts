@@ -63,9 +63,13 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await expect(page.locator('.puzzle-tag')).toHaveText('Puzzle 04')
 })
 
-test('both queen images have visible artwork', async ({ page }) => {
+test('all piece images have visible artwork offline', async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  const pixels = await page.evaluate(async () => Promise.all(['wq', 'bq'].map(async (name) => {
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await page.reload()
+  await context.setOffline(true)
+  const pixels = await page.evaluate(async () => Promise.all(['wk', 'wq', 'wr', 'wb', 'wn', 'wp', 'bk', 'bq', 'br', 'bb', 'bn', 'bp'].map(async (name) => {
     const image = new Image()
     image.src = `/pieces/${name}.png`
     await image.decode()
@@ -75,11 +79,13 @@ test('both queen images have visible artwork', async ({ page }) => {
     context.drawImage(image, 0, 0, 64, 64)
     const alpha = context.getImageData(0, 0, 64, 64).data
     let visible = 0
-    for (let index = 3; index < alpha.length; index += 4) if (alpha[index] > 0) visible++
+    for (let index = 3; index < alpha.length; index += 4) if (alpha[index] > 128) visible++
     return visible
   })))
-  expect(pixels[0]).toBeGreaterThan(50)
-  expect(pixels[1]).toBeGreaterThan(50)
+  for (const visible of pixels) expect(visible).toBeGreaterThan(50)
+  const pieceBox = await page.locator('img.piece').first().boundingBox()
+  expect(pieceBox?.width).toBeGreaterThan(20)
+  expect(pieceBox?.height).toBeGreaterThan(20)
 })
 
 test('uses chess glyphs when piece images fail to load', async ({ page }) => {
