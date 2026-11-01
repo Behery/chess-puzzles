@@ -50,7 +50,7 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await context.setOffline(true)
   await page.reload()
   const pieceImage = page.locator('img.piece').first()
-  await expect(pieceImage).toHaveAttribute('src', /\/pieces\/[wb][kqrbnp]\.svg$/)
+  await expect(pieceImage).toHaveAttribute('src', /\/pieces\/[wb][kqrbnp]\.png$/)
   await expect.poll(() => pieceImage.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
   await solve(page, 'easy')
 
@@ -61,6 +61,33 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await page.getByRole('button', { name: 'New puzzle' }).click()
   await expect(page.locator('.square')).toHaveCount(64)
   await expect(page.locator('.puzzle-tag')).toHaveText('Puzzle 04')
+})
+
+test('both queen images have visible artwork', async ({ page }) => {
+  await page.goto('/')
+  const pixels = await page.evaluate(async () => Promise.all(['wq', 'bq'].map(async (name) => {
+    const image = new Image()
+    image.src = `/pieces/${name}.png`
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 64
+    const context = canvas.getContext('2d')!
+    context.drawImage(image, 0, 0, 64, 64)
+    const alpha = context.getImageData(0, 0, 64, 64).data
+    let visible = 0
+    for (let index = 3; index < alpha.length; index += 4) if (alpha[index] > 0) visible++
+    return visible
+  })))
+  expect(pixels[0]).toBeGreaterThan(50)
+  expect(pixels[1]).toBeGreaterThan(50)
+})
+
+test('uses chess glyphs when piece images fail to load', async ({ page }) => {
+  await page.route('**/pieces/*.png', (route) => route.abort())
+  await page.goto('/')
+  await expect(page.locator('.square')).toHaveCount(64)
+  await expect(page.locator('.fallback-piece').first()).toBeVisible()
+  await expect(page.locator('.fallback-piece').first()).toHaveText(/[♔-♟]/)
 })
 
 test('shows legal moves, staged hints, replay, and the animated solution', async ({ page }) => {

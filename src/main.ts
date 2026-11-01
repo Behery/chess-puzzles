@@ -3,6 +3,10 @@ import { registerSW } from 'virtual:pwa-register'
 import { playUci, type Difficulty, type Puzzle } from './puzzle'
 import './style.css'
 
+const pieces: Record<string, string> = {
+  wk: '♔', wq: '♕', wr: '♖', wb: '♗', wn: '♘', wp: '♙',
+  bk: '♚', bq: '♛', br: '♜', bb: '♝', bn: '♞', bp: '♟',
+}
 const names: Record<string, string> = {
   k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn',
 }
@@ -121,9 +125,16 @@ function renderBoard(): void {
       if (piece) {
         const image = document.createElement('img')
         image.className = 'piece'
-        image.src = `/pieces/${piece.color}${piece.type}.svg`
         image.alt = ''
         image.draggable = false
+        image.onerror = () => {
+          const symbol = document.createElement('span')
+          symbol.className = `piece fallback-piece ${piece.color === 'w' ? 'white-piece' : 'black-piece'}`
+          symbol.setAttribute('aria-hidden', 'true')
+          symbol.textContent = pieces[`${piece.color}${piece.type}`]
+          image.replaceWith(symbol)
+        }
+        image.src = `/pieces/${piece.color}${piece.type}.png`
         button.append(image)
       }
       if (file === files[0]) {
