@@ -49,6 +49,9 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await expect(page.locator('.square')).toHaveCount(64)
   await context.setOffline(true)
   await page.reload()
+  const pieceImage = page.locator('img.piece').first()
+  await expect(pieceImage).toHaveAttribute('src', /\/pieces\/[wb][kqrbnp]\.svg$/)
+  await expect.poll(() => pieceImage.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
   await solve(page, 'easy')
 
   await page.getByLabel('Difficulty').selectOption('medium')

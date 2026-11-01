@@ -188,18 +188,10 @@ button{
   display:block;
   position:relative;
   z-index:1;
-  line-height:1;
-  font-family:"Segoe UI Symbol","Noto Sans Symbols 2",Georgia,serif;
-  font-size:clamp(29px,5.8vw,63px);
+  width:88%;
+  height:88%;
+  object-fit:contain;
   user-select:none
-}
-.white-piece{
-  color:#fffefa;
-  text-shadow:0 2px 1px #14251c,2px 0 1px #14251c,-2px 0 1px #14251c,0 -2px 1px #14251c
-}
-.black-piece{
-  color:#172820;
-  text-shadow:0 1px 1px #fff9
 }
 .rank-label,.file-label{
   position:absolute;
@@ -383,7 +375,6 @@ button{
   .action-button{min-height:44px;padding:5px 2px;font-size:12px}
   .new-button{grid-column:1/-1;min-height:44px;padding:7px 12px;font-size:13px}
   .small-note{display:none}
-  .piece{font-size:clamp(29px,8.6vw,61px)}
 }
 @media(max-width:430px){
   .shell{padding:4px 10px}
@@ -394,6 +385,5 @@ button{
   .offline-badge{font-size:10px;padding:5px 8px}
   .board-card{padding:6px 10px;border-radius:13px}
   .board-topline{min-height:20px;margin:0 2px 4px}
-  .piece{font-size:clamp(27px,9vw,44px)}
   .rank-label,.file-label{font-size:8px}
 }
