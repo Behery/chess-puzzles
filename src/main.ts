@@ -24,6 +24,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <p class="intro-copy">Choose a difficulty, then tap a piece and its destination. Your opponent will reply between moves.</p>
       </div>
       <div class="play-area">
+        <section class="board-card" aria-label="Chess puzzle">
+          <div class="board-topline"><span id="side">Preparing puzzle…</span><span class="puzzle-tag">Puzzle 01</span></div>
+          <div id="board" class="board" role="group" aria-label="Chess board"></div>
+          <p id="status" class="status" role="status" aria-live="polite">Generating a puzzle…</p>
+        </section>
         <aside class="details">
           <label class="difficulty-label" for="difficulty">Difficulty</label>
           <select id="difficulty" class="difficulty-select">
@@ -44,13 +49,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <button id="hint" class="action-button" type="button" disabled>Hint</button>
             <button id="solve" class="action-button" type="button" disabled>Solve</button>
           </div>
-        </aside>
-        <section class="board-card" aria-label="Chess puzzle">
-          <div class="board-topline"><span id="side">Preparing puzzle…</span><span class="puzzle-tag">Puzzle 01</span></div>
-          <div id="board" class="board" role="group" aria-label="Chess board"></div>
-          <p id="status" class="status" role="status" aria-live="polite">Generating a puzzle…</p>
           <button id="new-puzzle" class="new-button" type="button" disabled>New puzzle <span aria-hidden="true">↗</span></button>
-        </section>
+          <p class="small-note">No connection needed once the app is installed.</p>
+        </aside>
       </div>
     </section>
   </main>
@@ -80,8 +81,6 @@ let playedMoves: string[] = []
 let viewIndex = 0
 let hintStage = 0
 let busy = false
-const moveDurationMs = 850
-const betweenMovesMs = 300
 
 function updateControls(): void {
   const replaying = viewIndex < playedMoves.length
@@ -189,47 +188,28 @@ worker.onmessage = (event: MessageEvent<{ puzzle?: Puzzle; error?: string }>) =>
 }
 
 async function animateBoardMove(from: Square, to: Square, apply: () => void): Promise<void> {
-  const sourcePiece = board.querySelector<HTMLElement>(`[data-square="${from}"] .piece`)
-  const start = sourcePiece?.getBoundingClientRect()
-  const destination = board.querySelector<HTMLElement>(`[data-square="${to}"]`)?.getBoundingClientRect()
-  const boardRect = board.getBoundingClientRect()
-  if (!sourcePiece || !start || !destination || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    apply()
-    renderBoard()
-    return
-  }
-
-  const movingPiece = sourcePiece.cloneNode(true) as HTMLElement
-  movingPiece.classList.add('moving-piece')
-  movingPiece.style.left = `${start.left - boardRect.left}px`
-  movingPiece.style.top = `${start.top - boardRect.top}px`
-  movingPiece.style.width = `${start.width}px`
-  movingPiece.style.height = `${start.height}px`
-  const dx = destination.left + destination.width / 2 - start.left - start.width / 2
-  const dy = destination.top + destination.height / 2 - start.top - start.height / 2
-  sourcePiece.style.visibility = 'hidden'
-  board.append(movingPiece)
-  board.dataset.animating = 'true'
-  try {
-    await new Promise<void>((resolve) => {
-      let startedAt: number | undefined
-      const frame = (now: number) => {
-        startedAt ??= now
-        const progress = Math.min((now - startedAt) / moveDurationMs, 1)
-        const eased = progress < 0.5 ? 2 * progress * progress : 1 - ((-2 * progress + 2) ** 2) / 2
-        movingPiece.style.transform = `translate(${dx * eased}px, ${dy * eased}px)`
-        if (progress < 1) requestAnimationFrame(frame)
-        else resolve()
-      }
-      requestAnimationFrame(frame)
-    })
-  } finally {
-    movingPiece.remove()
-    sourcePiece.style.removeProperty('visibility')
-    board.dataset.animating = 'false'
-  }
+  const start = board.querySelector<HTMLButtonElement>(`[data-square="${from}"]`)?.getBoundingClientRect()
   apply()
   renderBoard()
+  const target = board.querySelector<HTMLButtonElement>(`[data-square="${to}"]`)
+  const piece = target?.querySelector<HTMLElement>('.piece')
+  if (!start || !target || !piece || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+  const end = target.getBoundingClientRect()
+  board.dataset.animating = 'true'
+  target.style.zIndex = '3'
+  try {
+    await piece.animate(
+      [
+        { transform: `translate(${start.left - end.left}px, ${start.top - end.top}px)` },
+        { transform: 'translate(0, 0)' },
+      ],
+      { duration: 280, easing: 'ease-in-out' },
+    ).finished
+  } finally {
+    board.dataset.animating = 'false'
+    target.style.removeProperty('z-index')
+  }
 }
 
 async function recordMove(uci: string): Promise<void> {
@@ -287,7 +267,7 @@ async function showSolution(): Promise<void> {
   renderBoard()
   try {
     for (const uci of puzzle.solution) {
-      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : betweenMovesMs)
+      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
       await recordMove(uci)
     }
     solutionIndex = puzzle.solution.length
@@ -347,7 +327,7 @@ board.addEventListener('click', async (event) => {
       solved = true
       status.textContent = 'Checkmate! Well done.'
     } else if (solutionIndex < puzzle.solution.length) {
-      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : betweenMovesMs)
+      await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
       await recordMove(puzzle.solution[solutionIndex])
       solutionIndex++
     }

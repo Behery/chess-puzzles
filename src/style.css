@@ -88,12 +88,10 @@ button{
 .play-area{
   display:grid;
   grid-template-columns:minmax(0,680px) minmax(240px,1fr);
-  grid-template-areas:"board details";
   gap:28px;
   align-items:start
 }
 .board-card{
-  grid-area:board;
   padding:20px;
   border:1px solid #d8ddd3;
   border-radius:20px;
@@ -115,17 +113,12 @@ button{
   font-weight:700
 }
 .board{
-  position:relative;
   display:grid;
   grid-template-columns:repeat(8,1fr);
   aspect-ratio:1;
   overflow:hidden;
   border-radius:7px;
   background:#d8ddd3
-}
-.moving-piece{
-  pointer-events:none;
-  will-change:transform
 }
 .square{
   position:relative;
@@ -200,10 +193,6 @@ button{
   font-size:clamp(29px,5.8vw,63px);
   user-select:none
 }
-.piece.moving-piece{
-  position:absolute;
-  z-index:10
-}
 .white-piece{
   color:#fffefa;
   text-shadow:0 2px 1px #14251c,2px 0 1px #14251c,-2px 0 1px #14251c,0 -2px 1px #14251c
@@ -240,7 +229,6 @@ button{
   font-weight:700
 }
 .details{
-  grid-area:details;
   display:flex;
   flex-direction:column;
   gap:16px
@@ -330,9 +318,6 @@ button{
   font-size:15px;
   font-weight:800
 }
-.board-card .new-button{
-  margin-top:10px
-}
 .new-button:hover:not(:disabled){
   background:#e7b65e
 }
@@ -344,6 +329,12 @@ button{
   font-size:21px;
   font-weight:400
 }
+.small-note{
+  margin:1px 8px;
+  color:#879087;
+  font-size:12px;
+  line-height:1.5
+}
 @media(max-width:820px){
   .shell{
   max-width:650px;
@@ -354,7 +345,6 @@ button{
 }
 .play-area{
   grid-template-columns:1fr;
-  grid-template-areas:"details" "board";
   gap:16px
 }
 .intro{
@@ -370,6 +360,9 @@ button{
   margin-top:9px;
   font-size:25px
 }
+.small-note{
+  text-align:center
+}
 .piece{
   font-size:clamp(29px,8.6vw,61px)
 }
@@ -377,94 +370,26 @@ button{
 }
 @media(max-width:430px){
   .shell{
-  padding:8px 10px 16px
+  padding:14px 10px 30px
 }
 .topbar{
-  padding:0 2px 8px
+  padding:4px 3px 30px
 }
 .brand{
-  font-size:15px
-}
-.brand-mark{
-  width:30px;
-  height:30px;
-  font-size:22px
+  font-size:16px
 }
 .offline-badge{
-  display:none
-}
-.intro{
-  position:absolute;
-  width:1px;
-  height:1px;
-  margin:-1px;
-  padding:0;
-  overflow:hidden;
-  clip-path:inset(50%);
-  white-space:nowrap
-}
-.play-area{
-  gap:8px
-}
-.details{
-  gap:6px
-}
-.difficulty-label{
-  margin:0 2px;
   font-size:10px
 }
-.difficulty-select{
-  min-height:40px;
-  padding:5px 10px;
-  font-size:13px
-}
-.goal-card{
-  padding:9px 12px;
-  border-radius:11px
-}
-.goal-card .card-label{
-  font-size:9px
-}
-.goal-card h2{
-  margin:3px 0 2px;
-  font-size:17px
-}
-.goal-card p{
-  font-size:11px;
-  line-height:1.2
-}
-.action-row{
-  gap:6px
-}
-.action-button{
-  min-height:40px;
-  padding:5px;
-  font-size:12px
+.intro{
+  padding:0 4px
 }
 .board-card{
-  padding:7px;
-  border-radius:11px
+  padding:10px;
+  border-radius:13px
 }
 .board-topline{
-  min-height:20px;
-  margin:0 2px 5px;
-  font-size:13px
-}
-.board{
-  width:min(100%, max(180px, calc(100svh - 410px)));
-  margin-inline:auto
-}
-.status{
-  min-height:18px;
-  margin:6px 2px 0;
-  font-size:12px;
-  line-height:1.2
-}
-.board-card .new-button{
-  min-height:40px;
-  margin-top:6px;
-  padding:7px 12px;
-  font-size:13px
+  margin:2px 4px 10px
 }
 .piece{
   font-size:clamp(27px,9vw,44px)
