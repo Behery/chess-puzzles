@@ -84,16 +84,21 @@ test('shows legal moves, staged hints, replay, and the animated solution', async
 
   await page.evaluate(() => {
     const boardElement = document.querySelector('#board')!
-    const windowWithFlag = window as Window & { sawMoveAnimation?: boolean }
-    windowWithFlag.sawMoveAnimation = false
+    const windowWithTiming = window as Window & { moveAnimationStart?: number; moveAnimationDurations?: number[] }
+    windowWithTiming.moveAnimationDurations = []
     new MutationObserver(() => {
-      if (boardElement.getAttribute('data-animating') === 'true') windowWithFlag.sawMoveAnimation = true
+      if (boardElement.getAttribute('data-animating') === 'true') {
+        windowWithTiming.moveAnimationStart = performance.now()
+      } else if (windowWithTiming.moveAnimationStart !== undefined) {
+        windowWithTiming.moveAnimationDurations!.push(performance.now() - windowWithTiming.moveAnimationStart)
+        windowWithTiming.moveAnimationStart = undefined
+      }
     }).observe(boardElement, { attributes: true, attributeFilter: ['data-animating'] })
   })
   await source.click()
   await destination.click()
   await expect(page.getByRole('status')).toHaveText(`Correct. Find move 2 of ${Math.ceil(solution.length / 2)}.`)
-  expect(await page.evaluate(() => (window as Window & { sawMoveAnimation?: boolean }).sawMoveAnimation)).toBe(true)
+  expect(await page.evaluate(() => (window as Window & { moveAnimationDurations?: number[] }).moveAnimationDurations![0])).toBeGreaterThanOrEqual(600)
   await expect(page.locator(`[data-square="${reply.slice(0, 2)}"]`)).toHaveClass(/last-move/)
   await expect(page.locator(`[data-square="${reply.slice(2, 4)}"]`)).toHaveClass(/last-move/)
 
@@ -120,14 +125,32 @@ test('shows legal moves, staged hints, replay, and the animated solution', async
 test.describe('phone layout', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
-  test('shows the board and goal without horizontal overflow', async ({ page }) => {
+  test('keeps the objective, controls, board, and New puzzle in view', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('.square')).toHaveCount(64)
     await expect(page.locator('#side')).toContainText('to move')
     await expect(page.locator('#goal')).not.toHaveText('Preparing puzzle…')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }]) {
+      await page.setViewportSize(viewport)
+      const positions = await page.evaluate(() => {
+        const goal = document.querySelector('#goal')!.getBoundingClientRect()
+        const controls = document.querySelector('.action-row')!.getBoundingClientRect()
+        const board = document.querySelector('#board')!.getBoundingClientRect()
+        const newButton = document.querySelector('#new-puzzle')!.getBoundingClientRect()
+        return { goalBottom: goal.bottom, controlsBottom: controls.bottom, boardTop: board.top, boardBottom: board.bottom, newTop: newButton.top, newBottom: newButton.bottom, boardWidth: board.width }
+      })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
+      expect(positions.goalBottom).toBeLessThan(positions.boardTop)
+      expect(positions.controlsBottom).toBeLessThan(positions.boardTop)
+      expect(positions.boardBottom).toBeLessThan(positions.newTop)
+      expect(positions.newBottom).toBeLessThanOrEqual(viewport.height)
+      expect(positions.boardWidth).toBeGreaterThanOrEqual(240)
+    }
     const first = (await page.locator('#board').getAttribute('data-solution'))!.split(' ')[0]
     await page.locator(`[data-square="${first.slice(0, 2)}"]`).tap()
     await expect(page.locator(`[data-square="${first.slice(2, 4)}"]`)).toHaveClass(/legal-target/)
+    await page.locator(`[data-square="${first.slice(2, 4)}"]`).tap()
+    await expect(page.locator('.moving-piece')).toBeVisible()
+    await expect(page.locator('#board')).toHaveAttribute('data-animating', 'true')
   })
 })
