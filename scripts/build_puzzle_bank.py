@@ -23,23 +23,6 @@ def classify(rating: int, player_moves: int) -> str | None:
     return None
 
 
-def goal(themes: set[str], player_moves: int) -> str:
-    for count in range(1, 5):
-        if f"mateIn{count}" in themes:
-            return f"Checkmate in {count} {'move' if count == 1 else 'moves'}"
-    if "mateIn5" in themes:
-        return "Checkmate in 5 or more moves"
-    if "mate" in themes:
-        return f"Find the {player_moves}-move mating attack"
-    if "crushing" in themes:
-        return "Gain a crushing advantage"
-    if "advantage" in themes:
-        return "Gain a decisive advantage"
-    if "equality" in themes:
-        return "Save the position"
-    return "Find the best tactic"
-
-
 bank: dict[str, list[dict]] = {key: [] for key in ("easy", "medium", "hard")}
 counts: Counter[str] = Counter()
 with bz2.open(SOURCE, "rt", encoding="utf-8") as source:
@@ -49,6 +32,8 @@ with bz2.open(SOURCE, "rt", encoding="utf-8") as source:
         moves = puzzle["Moves"].split()
         rating = int(puzzle["Rating"])
         themes = set(puzzle["Themes"].split())
+        if not any(theme.startswith("mateIn") for theme in themes):
+            continue
         player_moves = len(moves) // 2
         fullmove = int(fen.split()[5])
         board = fen.split()[0]
@@ -69,7 +54,7 @@ with bz2.open(SOURCE, "rt", encoding="utf-8") as source:
             "id": puzzle["PuzzleId"],
             "fen": fen,
             "moves": moves,
-            "goal": goal(themes, player_moves),
+            "goal": f"Checkmate in {player_moves} {'move' if player_moves == 1 else 'moves'}",
             "rating": rating,
         })
 

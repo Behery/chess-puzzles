@@ -10,6 +10,8 @@ describe('offline puzzle bank', () => {
     for (const difficulty of difficulties) {
       for (const seed of puzzleBank[difficulty]) {
         const game = new Chess(seed.fen)
+        const mateMoves = seed.moves.length / 2
+        expect(seed.goal).toBe(`Checkmate in ${mateMoves} ${mateMoves === 1 ? 'move' : 'moves'}`)
         if (difficulty === 'easy') expect(seed.rating).toBeLessThanOrEqual(1300)
         if (difficulty === 'medium') {
           expect(seed.rating).toBeGreaterThan(1300)
@@ -23,15 +25,7 @@ describe('offline puzzle bank', () => {
         expect(pieces.filter((piece) => piece!.color === 'w').length).toBeGreaterThanOrEqual(5)
         expect(pieces.filter((piece) => piece!.color === 'b').length).toBeGreaterThanOrEqual(5)
         for (const move of seed.moves.slice(1)) playUci(game, move)
-        if (seed.goal.startsWith('Checkmate')) {
-          const goalMoves = Number(seed.goal.match(/\d+/)![0])
-          if (seed.goal.includes('or more')) {
-            expect(seed.moves.length / 2).toBeGreaterThanOrEqual(goalMoves)
-          } else {
-            expect(goalMoves).toBe(seed.moves.length / 2)
-          }
-          expect(game.isCheckmate()).toBe(true)
-        }
+        expect(game.isCheckmate()).toBe(true)
       }
     }
   }, 120_000)
@@ -44,17 +38,24 @@ describe('offline puzzle bank', () => {
       sides.add(puzzle.side)
       expect(puzzle.difficulty).toBe(difficulty)
       expect(puzzle.solution.length % 2).toBe(1)
+      const mateMoves = Math.ceil(puzzle.solution.length / 2)
+      expect(puzzle.goal).toBe(`Checkmate in ${mateMoves} ${mateMoves === 1 ? 'move' : 'moves'}`)
       expect(Math.ceil(puzzle.solution.length / 2)).toBeGreaterThanOrEqual(
         difficulty === 'hard' ? 3 : difficulty === 'medium' ? 2 : 1,
       )
       const game = new Chess(puzzle.fen)
       for (const move of puzzle.solution) playUci(game, move)
+      expect(game.isCheckmate()).toBe(true)
     }
     expect(seen.size).toBe(30)
     expect(sides.size).toBe(2)
   })
 
-  it('includes easy tactics beyond mate in one', () => {
-    expect(puzzleBank.easy.some((seed) => seed.goal !== 'Checkmate in 1 move')).toBe(true)
+  it('keeps a sizable mate pool at every difficulty', () => {
+    expect(puzzleBank.easy.length).toBeGreaterThan(1000)
+    expect(puzzleBank.medium.length).toBeGreaterThan(500)
+    expect(puzzleBank.hard.length).toBeGreaterThan(100)
+    expect(puzzleBank.easy.some((seed) => seed.goal === 'Checkmate in 1 move')).toBe(true)
+    expect(puzzleBank.easy.some((seed) => seed.goal === 'Checkmate in 2 moves')).toBe(true)
   })
 })
