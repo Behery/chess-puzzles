@@ -80,7 +80,7 @@ let playedMoves: string[] = []
 let viewIndex = 0
 let hintStage = 0
 let busy = false
-const moveDurationMs = 650
+const moveDurationMs = 850
 const betweenMovesMs = 300
 
 function updateControls(): void {
@@ -191,41 +191,45 @@ worker.onmessage = (event: MessageEvent<{ puzzle?: Puzzle; error?: string }>) =>
 async function animateBoardMove(from: Square, to: Square, apply: () => void): Promise<void> {
   const sourcePiece = board.querySelector<HTMLElement>(`[data-square="${from}"] .piece`)
   const start = sourcePiece?.getBoundingClientRect()
-  const movingPiece = sourcePiece?.cloneNode(true) as HTMLElement | undefined
+  const destination = board.querySelector<HTMLElement>(`[data-square="${to}"]`)?.getBoundingClientRect()
   const boardRect = board.getBoundingClientRect()
-  apply()
-  renderBoard()
-  const targetPiece = board.querySelector<HTMLElement>(`[data-square="${to}"] .piece`)
-  if (!start || !movingPiece || !targetPiece || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (!sourcePiece || !start || !destination || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    apply()
+    renderBoard()
+    return
+  }
 
-  const end = targetPiece.getBoundingClientRect()
+  const movingPiece = sourcePiece.cloneNode(true) as HTMLElement
   movingPiece.classList.add('moving-piece')
   movingPiece.style.left = `${start.left - boardRect.left}px`
   movingPiece.style.top = `${start.top - boardRect.top}px`
   movingPiece.style.width = `${start.width}px`
   movingPiece.style.height = `${start.height}px`
-  movingPiece.style.transition = `transform ${moveDurationMs}ms ease-in-out`
-  targetPiece.style.visibility = 'hidden'
+  const dx = destination.left + destination.width / 2 - start.left - start.width / 2
+  const dy = destination.top + destination.height / 2 - start.top - start.height / 2
+  sourcePiece.style.visibility = 'hidden'
   board.append(movingPiece)
   board.dataset.animating = 'true'
   try {
     await new Promise<void>((resolve) => {
-      const timeout = window.setTimeout(resolve, moveDurationMs + 200)
-      movingPiece.addEventListener('transitionend', (event) => {
-        if (event.propertyName === 'transform') {
-          window.clearTimeout(timeout)
-          resolve()
-        }
-      })
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        movingPiece.style.transform = `translate(${end.left - start.left}px, ${end.top - start.top}px)`
-      }))
+      let startedAt: number | undefined
+      const frame = (now: number) => {
+        startedAt ??= now
+        const progress = Math.min((now - startedAt) / moveDurationMs, 1)
+        const eased = progress < 0.5 ? 2 * progress * progress : 1 - ((-2 * progress + 2) ** 2) / 2
+        movingPiece.style.transform = `translate(${dx * eased}px, ${dy * eased}px)`
+        if (progress < 1) requestAnimationFrame(frame)
+        else resolve()
+      }
+      requestAnimationFrame(frame)
     })
   } finally {
-    board.dataset.animating = 'false'
     movingPiece.remove()
-    targetPiece.style.removeProperty('visibility')
+    sourcePiece.style.removeProperty('visibility')
+    board.dataset.animating = 'false'
   }
+  apply()
+  renderBoard()
 }
 
 async function recordMove(uci: string): Promise<void> {

@@ -98,7 +98,7 @@ test('shows legal moves, staged hints, replay, and the animated solution', async
   await source.click()
   await destination.click()
   await expect(page.getByRole('status')).toHaveText(`Correct. Find move 2 of ${Math.ceil(solution.length / 2)}.`)
-  expect(await page.evaluate(() => (window as Window & { moveAnimationDurations?: number[] }).moveAnimationDurations![0])).toBeGreaterThanOrEqual(600)
+  expect(await page.evaluate(() => (window as Window & { moveAnimationDurations?: number[] }).moveAnimationDurations![0])).toBeGreaterThanOrEqual(800)
   await expect(page.locator(`[data-square="${reply.slice(0, 2)}"]`)).toHaveClass(/last-move/)
   await expect(page.locator(`[data-square="${reply.slice(2, 4)}"]`)).toHaveClass(/last-move/)
 
@@ -147,10 +147,16 @@ test.describe('phone layout', () => {
       expect(positions.boardWidth).toBeGreaterThanOrEqual(240)
     }
     const first = (await page.locator('#board').getAttribute('data-solution'))!.split(' ')[0]
+    expect(await page.locator(`[data-square="${first.slice(0, 2)}"] .piece`).evaluate((piece) => parseFloat(getComputedStyle(piece).fontSize))).toBeGreaterThanOrEqual(33)
     await page.locator(`[data-square="${first.slice(0, 2)}"]`).tap()
     await expect(page.locator(`[data-square="${first.slice(2, 4)}"]`)).toHaveClass(/legal-target/)
     await page.locator(`[data-square="${first.slice(2, 4)}"]`).tap()
     await expect(page.locator('.moving-piece')).toBeVisible()
     await expect(page.locator('#board')).toHaveAttribute('data-animating', 'true')
+    const movingPiece = page.locator('.moving-piece')
+    const start = (await movingPiece.boundingBox())!
+    await page.waitForTimeout(300)
+    const middle = (await movingPiece.boundingBox())!
+    expect(Math.hypot(middle.x - start.x, middle.y - start.y)).toBeGreaterThan(4)
   })
 })

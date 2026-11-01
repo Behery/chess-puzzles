@@ -124,10 +124,6 @@ button{
   background:#d8ddd3
 }
 .moving-piece{
-  position:absolute;
-  z-index:10;
-  display:grid;
-  place-items:center;
   pointer-events:none;
   will-change:transform
 }
@@ -205,7 +201,8 @@ button{
   user-select:none
 }
 .piece.moving-piece{
-  position:absolute
+  position:absolute;
+  z-index:10
 }
 .white-piece{
   color:#fffefa;
@@ -470,7 +467,7 @@ button{
   font-size:13px
 }
 .piece{
-  font-size:clamp(20px,7vw,38px)
+  font-size:clamp(27px,9vw,44px)
 }
 .rank-label,.file-label{
   font-size:8px
