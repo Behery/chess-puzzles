@@ -335,67 +335,65 @@ button{
   font-size:12px;
   line-height:1.5
 }
+@media(max-height:950px), (max-width:820px){
+  .intro{
+    position:absolute;
+    width:1px;
+    height:1px;
+    margin:-1px;
+    padding:0;
+    overflow:hidden;
+    clip-path:inset(50%);
+    white-space:nowrap
+  }
+  .shell{padding-top:8px;padding-bottom:10px}
+  .topbar{padding-bottom:8px}
+  .board-card{padding-top:8px;padding-bottom:8px}
+  .board-topline{min-height:22px;margin-bottom:4px}
+  .status{min-height:18px;margin:4px 2px 0;font-size:12px;line-height:1.2}
+}
+@media(min-width:821px) and (max-height:760px){
+  .shell{padding-top:4px;padding-bottom:0}
+  .topbar{padding-bottom:2px}
+  .brand{font-size:15px}
+  .brand-mark{width:28px;height:28px;font-size:20px}
+  .offline-badge{display:none}
+  .board-card{padding-top:2px;padding-bottom:2px}
+  .board-topline{min-height:18px;margin-bottom:2px;font-size:13px}
+  .status{min-height:16px;margin-top:2px}
+}
 @media(max-width:820px){
-  .shell{
-  max-width:650px;
-  padding:18px 16px 40px
-}
-.topbar{
-  padding-bottom:38px
-}
-.play-area{
-  grid-template-columns:1fr;
-  gap:16px
-}
-.intro{
-  margin-bottom:25px
-}
-.details{
-  gap:12px
-}
-.goal-card{
-  padding:22px
-}
-.goal-card h2{
-  margin-top:9px;
-  font-size:25px
-}
-.small-note{
-  text-align:center
-}
-.piece{
-  font-size:clamp(29px,8.6vw,61px)
-}
-
+  .shell{max-width:650px;padding:8px 16px 10px}
+  .topbar{padding-bottom:6px}
+  .play-area{grid-template-columns:1fr;gap:8px}
+  .details{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .difficulty-label{
+    position:absolute;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+    clip-path:inset(50%)
+  }
+  .difficulty-select{grid-column:1;min-height:44px;padding:5px;font-size:13px}
+  .goal-card{grid-column:2/-1;grid-row:1;padding:6px 8px;border-radius:11px}
+  .goal-card .card-label{display:none}
+  .goal-card h2{margin:0 0 2px;font-size:16px}
+  .goal-card p{font-size:11px;line-height:1.2}
+  .action-row{display:contents}
+  .action-button{min-height:44px;padding:5px 2px;font-size:12px}
+  .new-button{grid-column:1/-1;min-height:44px;padding:7px 12px;font-size:13px}
+  .small-note{display:none}
+  .piece{font-size:clamp(29px,8.6vw,61px)}
 }
 @media(max-width:430px){
-  .shell{
-  padding:14px 10px 30px
-}
-.topbar{
-  padding:4px 3px 30px
-}
-.brand{
-  font-size:16px
-}
-.offline-badge{
-  font-size:10px
-}
-.intro{
-  padding:0 4px
-}
-.board-card{
-  padding:10px;
-  border-radius:13px
-}
-.board-topline{
-  margin:2px 4px 10px
-}
-.piece{
-  font-size:clamp(27px,9vw,44px)
-}
-.rank-label,.file-label{
-  font-size:8px
-}
-
+  .shell{padding:4px 10px}
+  .play-area{gap:6px}
+  .details{gap:4px}
+  .brand{font-size:15px}
+  .brand-mark{width:30px;height:30px;font-size:22px}
+  .offline-badge{font-size:10px;padding:5px 8px}
+  .board-card{padding:6px 10px;border-radius:13px}
+  .board-topline{min-height:20px;margin:0 2px 4px}
+  .piece{font-size:clamp(27px,9vw,44px)}
+  .rank-label,.file-label{font-size:8px}
 }

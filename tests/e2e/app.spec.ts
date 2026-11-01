@@ -117,17 +117,51 @@ test('shows legal moves, staged hints, replay, and the animated solution', async
   await expect(page.getByRole('status')).toHaveText('Review complete.')
 })
 
-test.describe('phone layout', () => {
+test.describe('compact layout', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
-  test('shows the board and goal without horizontal overflow', async ({ page }) => {
+  test('keeps the full-size board and controls visible on phones and tablets', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('.square')).toHaveCount(64)
     await expect(page.locator('#side')).toContainText('to move')
     await expect(page.locator('#goal')).not.toHaveText('Preparing puzzle…')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 }, { width: 375, height: 667 }, { width: 320, height: 568 }]) {
+      await page.setViewportSize(viewport)
+      const layout = await page.evaluate(() => {
+        const board = document.querySelector('#board')!.getBoundingClientRect()
+        const controls = document.querySelector('.details')!.getBoundingClientRect()
+        return { boardWidth: board.width, boardBottom: board.bottom, controlsBottom: controls.bottom, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.documentElement.scrollHeight }
+      })
+      expect(layout.boardWidth).toBeGreaterThanOrEqual(viewport.width <= 430 ? viewport.width - 42 : 576)
+      expect(layout.boardBottom).toBeLessThanOrEqual(viewport.height)
+      expect(layout.controlsBottom).toBeLessThanOrEqual(viewport.height)
+      expect(layout.scrollWidth).toBeLessThanOrEqual(viewport.width)
+      expect(layout.scrollHeight).toBeLessThanOrEqual(viewport.height)
+    }
+    await page.locator('#goal').evaluate((element) => { element.textContent = 'Checkmate in 5 or more moves' })
+    await page.locator('#goal-detail').evaluate((element) => { element.textContent = '5 moves to solve · Puzzle rating 2780' })
+    await page.locator('#status').evaluate((element) => { element.textContent = 'Reviewing move 10 of 12. Use Forward to resume.' })
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(568)
     const first = (await page.locator('#board').getAttribute('data-solution'))!.split(' ')[0]
     await page.locator(`[data-square="${first.slice(0, 2)}"]`).tap()
     await expect(page.locator(`[data-square="${first.slice(2, 4)}"]`)).toHaveClass(/legal-target/)
   })
+})
+
+test('keeps the full-size board and controls visible on PC', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.square')).toHaveCount(64)
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 1280, height: 720 }]) {
+    await page.setViewportSize(viewport)
+    const layout = await page.evaluate(() => {
+      const board = document.querySelector('#board')!.getBoundingClientRect()
+      const controls = document.querySelector('.details')!.getBoundingClientRect()
+      return { boardWidth: board.width, boardBottom: board.bottom, controlsBottom: controls.bottom, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.documentElement.scrollHeight }
+    })
+    expect(layout.boardWidth).toBeGreaterThanOrEqual(638)
+    expect(layout.boardBottom).toBeLessThanOrEqual(viewport.height)
+    expect(layout.controlsBottom).toBeLessThanOrEqual(viewport.height)
+    expect(layout.scrollWidth).toBeLessThanOrEqual(viewport.width)
+    expect(layout.scrollHeight).toBeLessThanOrEqual(viewport.height)
+  }
 })
