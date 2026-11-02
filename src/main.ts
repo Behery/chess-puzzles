@@ -194,6 +194,7 @@ function renderBoard(): void {
 
 function nextPuzzle(): void {
   if (busy) return
+  status.classList.remove('won')
   busy = true
   game = null
   puzzle = null
@@ -274,6 +275,7 @@ function pause(ms: number): Promise<void> {
 
 async function replay(direction: -1 | 1): Promise<void> {
   if (!game || busy || (direction === -1 && viewIndex === 0) || (direction === 1 && viewIndex === playedMoves.length)) return
+  status.classList.remove('won')
   busy = true
   selected = null
   hintStage = 0
@@ -301,6 +303,7 @@ async function replay(direction: -1 | 1): Promise<void> {
 
 async function showSolution(): Promise<void> {
   if (!puzzle || busy) return
+  status.classList.remove('won')
   busy = true
   game = new Chess(puzzle.fen)
   playedMoves = []
@@ -372,6 +375,7 @@ board.addEventListener('click', async (event) => {
     if (mate) {
       solved = true
       status.textContent = 'Checkmate! Well done.'
+      status.classList.add('won')
     } else if (solutionIndex < puzzle.solution.length) {
       await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
       await recordMove(puzzle.solution[solutionIndex])
@@ -380,6 +384,7 @@ board.addEventListener('click', async (event) => {
     if (!solved && solutionIndex >= puzzle.solution.length) {
       solved = true
       status.textContent = 'Puzzle solved! Well done.'
+      status.classList.add('won')
     } else if (!solved) {
       status.textContent = `Correct. Find move ${Math.floor(solutionIndex / 2) + 1} of ${Math.ceil(puzzle.solution.length / 2)}.`
     }
