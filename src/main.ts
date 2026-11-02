@@ -374,7 +374,7 @@ board.addEventListener('click', async (event) => {
     solutionIndex++
     if (mate) {
       solved = true
-      status.textContent = 'Checkmate! Well done.'
+      status.textContent = '🎉 Checkmate! Well done.'
       status.classList.add('won')
     } else if (solutionIndex < puzzle.solution.length) {
       await pause(matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180)
@@ -383,7 +383,7 @@ board.addEventListener('click', async (event) => {
     }
     if (!solved && solutionIndex >= puzzle.solution.length) {
       solved = true
-      status.textContent = 'Puzzle solved! Well done.'
+      status.textContent = '🎉 Puzzle solved! Well done.'
       status.classList.add('won')
     } else if (!solved) {
       status.textContent = `Correct. Find move ${Math.floor(solutionIndex / 2) + 1} of ${Math.ceil(puzzle.solution.length / 2)}.`

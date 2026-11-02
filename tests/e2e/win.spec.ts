@@ -16,13 +16,15 @@ test('announces a solved puzzle prominently on a phone', async ({ page }) => {
 
   const announcement = page.getByRole('status')
   await expect(announcement).toHaveClass(/won/)
+  await expect(announcement).toContainText('🎉')
   await expect(announcement).toContainText(/Checkmate|Puzzle solved/)
   const style = await announcement.evaluate((element) => {
     const computed = getComputedStyle(element)
-    return { fontSize: computed.fontSize, position: computed.position }
+    return { fontSize: computed.fontSize, position: computed.position, background: computed.backgroundImage }
   })
   expect(parseFloat(style.fontSize)).toBeGreaterThanOrEqual(20)
   expect(style.position).toBe('absolute')
+  expect(style.background).toContain('linear-gradient')
   await page.getByRole('button', { name: 'Back one move' }).click()
   await expect(announcement).not.toHaveClass(/won/)
   await page.getByRole('button', { name: 'New puzzle' }).click()

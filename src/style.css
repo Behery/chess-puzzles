@@ -260,14 +260,22 @@ button{
   margin:0;
   padding:20px 16px;
   transform:translate(-50%,-50%);
+  border:2px solid #fff8e2;
   border-radius:14px;
-  background:#19372d;
+  background:linear-gradient(135deg,#fff1bc,#f0bc5a);
   box-shadow:0 16px 40px rgba(23,36,32,.3);
-  color:#fffdf8;
+  color:#352711;
   font-size:clamp(20px,3vw,28px);
   line-height:1.2;
   text-align:center;
   pointer-events:none
+}
+@media(prefers-reduced-motion:no-preference){
+  .status.won{animation:win-pop .45s ease-out}
+  @keyframes win-pop{
+    from{opacity:0;transform:translate(-50%,-50%) scale(.85)}
+    to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  }
 }
 .details{
   display:flex;
