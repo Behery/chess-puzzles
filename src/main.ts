@@ -63,7 +63,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </section>
     <section id="licenses-view" class="licenses" aria-labelledby="licenses-title" hidden>
       <h1 id="licenses-title">Licenses and credits</h1>
+      <p>Copyright © 2026 behery.</p>
       <p>Chess Puzzle is licensed under GPL-3.0-only. Its puzzle data comes from the <a href="https://github.com/mcognetta/lichess-combined-puzzle-game-db">Lichess combined puzzle and game sample</a>, published under CC0.</p>
+      <p>Chess Puzzle is provided “as is,” without warranty, to the extent permitted by applicable law, unless otherwise stated in writing. See sections 15–17 of the GNU GPL version 3 below for details.</p>
       <details><summary>Chess Puzzle · GNU GPL version 3</summary><pre id="gpl-license"></pre></details>
       <details><summary>chess.js · BSD 2-Clause</summary><pre id="chess-license"></pre></details>
       <details><summary>Chess pieces · MIT</summary><p>Artwork from the Fancy/Eyes set by Maurizio Monge.</p><pre id="pieces-license"></pre></details>
