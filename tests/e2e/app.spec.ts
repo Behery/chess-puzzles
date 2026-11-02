@@ -73,6 +73,7 @@ test('shows license terms offline and keeps the puzzle when returning', async ({
   await page.getByRole('button', { name: 'Licenses' }).click()
   await expect(page.getByRole('heading', { name: 'Licenses and credits' })).toBeVisible()
   await expect(page.getByText('Copyright © 2026 behery.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'github.com/Behery/chess-puzzles' })).toHaveAttribute('href', 'https://github.com/Behery/chess-puzzles')
   await expect(page.getByText(/provided “as is,” without warranty/)).toBeVisible()
   await expect(board).toBeHidden()
   await page.getByText('Chess Puzzle · GNU GPL version 3').click()
