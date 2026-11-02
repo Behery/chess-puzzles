@@ -1,6 +1,9 @@
 import { Chess, type Square } from 'chess.js'
 import { registerSW } from 'virtual:pwa-register'
 import { playUci, type Difficulty, type Puzzle } from './puzzle'
+import gplLicense from '../LICENSE?raw'
+import chessLicense from '../node_modules/chess.js/LICENSE?raw'
+import piecesLicense from '../public/pieces/LICENSE?raw'
 import './style.css'
 
 const pieces: Record<string, string> = {
@@ -15,9 +18,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="shell">
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true">♜</span><span>Chess Puzzle</span></div>
+      <nav class="view-nav" aria-label="Views">
+        <button id="game-view-button" type="button" aria-current="page">Game</button>
+        <button id="licenses-view-button" type="button">Licenses</button>
+      </nav>
       <span class="offline-badge">Works offline</span>
     </header>
-    <section class="game" aria-labelledby="title">
+    <section id="game-view" class="game" aria-labelledby="title">
       <div class="intro">
         <p class="eyebrow">Real game tactics</p>
         <h1 id="title">Find the winning line.</h1>
@@ -54,8 +61,35 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </aside>
       </div>
     </section>
+    <section id="licenses-view" class="licenses" aria-labelledby="licenses-title" hidden>
+      <h1 id="licenses-title">Licenses and credits</h1>
+      <p>Chess Puzzle is licensed under GPL-3.0-only. Its puzzle data comes from the <a href="https://github.com/mcognetta/lichess-combined-puzzle-game-db">Lichess combined puzzle and game sample</a>, published under CC0.</p>
+      <details><summary>Chess Puzzle · GNU GPL version 3</summary><pre id="gpl-license"></pre></details>
+      <details><summary>chess.js · BSD 2-Clause</summary><pre id="chess-license"></pre></details>
+      <details><summary>Chess pieces · MIT</summary><p>Artwork from the Fancy/Eyes set by Maurizio Monge.</p><pre id="pieces-license"></pre></details>
+    </section>
   </main>
 `
+
+document.querySelector<HTMLElement>('#gpl-license')!.textContent = gplLicense
+document.querySelector<HTMLElement>('#chess-license')!.textContent = chessLicense
+document.querySelector<HTMLElement>('#pieces-license')!.textContent = piecesLicense
+const gameView = document.querySelector<HTMLElement>('#game-view')!
+const licensesView = document.querySelector<HTMLElement>('#licenses-view')!
+const gameViewButton = document.querySelector<HTMLButtonElement>('#game-view-button')!
+const licensesViewButton = document.querySelector<HTMLButtonElement>('#licenses-view-button')!
+gameViewButton.addEventListener('click', () => {
+  gameView.hidden = false
+  licensesView.hidden = true
+  gameViewButton.setAttribute('aria-current', 'page')
+  licensesViewButton.removeAttribute('aria-current')
+})
+licensesViewButton.addEventListener('click', () => {
+  gameView.hidden = true
+  licensesView.hidden = false
+  gameViewButton.removeAttribute('aria-current')
+  licensesViewButton.setAttribute('aria-current', 'page')
+})
 
 const board = document.querySelector<HTMLDivElement>('#board')!
 const status = document.querySelector<HTMLParagraphElement>('#status')!

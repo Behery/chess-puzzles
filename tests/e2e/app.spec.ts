@@ -63,6 +63,27 @@ test('plays every difficulty offline', async ({ page, context }) => {
   await expect(page.locator('.puzzle-tag')).toHaveText('Puzzle 04')
 })
 
+test('shows license terms offline and keeps the puzzle when returning', async ({ page, context }) => {
+  await page.goto('/')
+  const board = page.locator('#board')
+  await expect(board).toHaveAttribute('data-puzzle-id', /\w/)
+  const puzzleId = await board.getAttribute('data-puzzle-id')
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await context.setOffline(true)
+  await page.getByRole('button', { name: 'Licenses' }).click()
+  await expect(page.getByRole('heading', { name: 'Licenses and credits' })).toBeVisible()
+  await expect(board).toBeHidden()
+  await page.getByText('Chess Puzzle · GNU GPL version 3').click()
+  await expect(page.locator('#gpl-license')).toContainText('GNU GENERAL PUBLIC LICENSE')
+  await page.getByText('chess.js · BSD 2-Clause').click()
+  await expect(page.locator('#chess-license')).toContainText('Jeff Hlywa')
+  await page.getByText('Chess pieces · MIT').click()
+  await expect(page.locator('#pieces-license')).toContainText('Maurizio Monge')
+  await page.getByRole('button', { name: 'Game' }).click()
+  await expect(board).toHaveAttribute('data-puzzle-id', puzzleId!)
+  await expect(board).toBeVisible()
+})
+
 test('all piece images have visible artwork offline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
